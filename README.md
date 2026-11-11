@@ -12,7 +12,7 @@
 curl -fsSL https://github.com/floschu/caffeinate-doubleshot/releases/latest/download/install.sh | sudo bash
 ```
 
-Caffeinate Doubleshot needs a MacBook and an admin account. It installs a LaunchDaemon that starts at every boot and the `doubleshot` command.
+Caffeinate Doubleshot needs a MacBook and an admin account. It installs a LaunchDaemon that starts at every boot and the `doubleshot` command, with tab completion in zsh.
 
 ## Usage
 
@@ -20,6 +20,8 @@ Start `caffeinate` as usual, for example from Raycast or the Terminal, then clos
 
 ```
 doubleshot              # shows the current state
+doubleshot disable      # turns it off and restores normal sleep, also after a reboot
+doubleshot enable       # turns it back on
 doubleshot battery 25   # on battery below 25%, allow sleep again (default 15, 0 = off)
 doubleshot log          # shows the last 20 log lines
 doubleshot update       # installs the latest release

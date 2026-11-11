@@ -9,11 +9,13 @@ Caffeinate Doubleshot keeps a MacBook awake with the lid closed while any `caffe
 | File | Purpose |
 |---|---|
 | `src/caffeinate-doubleshot.sh` | The daemon. Polls every 3 seconds and toggles `pmset -a disablesleep`. Installed to `/usr/local/bin/`. |
-| `src/doubleshot` | User command: `status`, `battery [0-100]`, `log`, `update`, `version`, `uninstall`. Installed to `/usr/local/bin/`. |
+| `src/doubleshot` | User command: `status`, `enable`, `disable`, `battery [0-100]`, `log`, `update`, `version`, `uninstall`. Installed to `/usr/local/bin/`. |
+| `src/_doubleshot` | zsh completion for `doubleshot`. Installed to `/usr/local/share/zsh/site-functions/`, which is in the default fpath of macOS `/bin/zsh`. Keep its command list in step with `doubleshot`. |
 | `src/at.flosch.caffeinate-doubleshot.plist` | LaunchDaemon definition (`RunAtLoad`, `KeepAlive`, logs to `/var/log/caffeinate-doubleshot.log`). Installed to `/Library/LaunchDaemons/`. |
 | `src/install.sh` | Installs or updates. Works from a clone or piped from curl (`curl ... \| sudo bash`), in which case it downloads the other files from the release it came from. |
-| `.github/workflows/ci.yml` | Installs on a macOS runner and checks sleep toggling, the battery setting, update and uninstall. |
-| `.github/workflows/release.yml` | On a `vX.Y.Z` tag: runs CI, sets `VERSION` in the scripts and publishes a GitHub release with the four `src/` files. |
+| `.github/workflows/ci.yml` | Installs on a macOS runner and checks completion, sleep toggling, enable and disable, the battery setting, uninstall and update. |
+| `.github/ci-helpers.sh` | Shell functions for CI steps, loaded through `BASH_ENV`. |
+| `.github/workflows/release.yml` | On a `vX.Y.Z` tag: runs CI, sets `VERSION` in the scripts and publishes a GitHub release with the five `src/` files. |
 | `/usr/local/etc/caffeinate-doubleshot.conf` | Not in the repo. Written by `doubleshot battery`, holds `MIN_BATTERY=<n>`. The daemon reads it on every poll. Missing means 15. |
 
 Keep the top level to `README.md`, `AGENTS.md` and `.gitignore` (plus `.github/`). Scripts go in `src/`. The icon goes in `assets/`: `doubleshot.icon` is the Icon Composer source, `icon.png` the README image. Re-render it after icon changes:
@@ -28,7 +30,8 @@ Keep the top level to `README.md`, `AGENTS.md` and `.gitignore` (plus `.github/`
 - Any `caffeinate` process triggers it, regardless of what started it (Raycast, Terminal, other apps). Do not filter by parent process.
 - When `caffeinate` ends while the lid is closed, the Mac must sleep immediately (`pmset sleepnow`).
 - On battery below `MIN_BATTERY` (default 15%, set with `doubleshot battery`), sleep is allowed again even while `caffeinate` runs. The daemon parses the config file and never sources it, because it runs as root.
-- Every exit path (daemon stop, uninstall) must leave `disablesleep` at 0. A stuck `disablesleep 1` keeps a closed laptop running and heating up.
+- Every exit path (daemon stop, `doubleshot disable`, uninstall) must leave `disablesleep` at 0. A stuck `disablesleep 1` keeps a closed laptop running and heating up.
+- `doubleshot disable` uses `launchctl disable`, so it survives a reboot. An install or update keeps a disabled daemon stopped. Uninstall clears the flag with `launchctl enable`.
 - Installers and `doubleshot` must ask for the sudo password only once. sudo credential caching may be disabled on managed Macs, so re-exec the whole script as root instead of calling `sudo` per command.
 
 ## Conventions
@@ -40,14 +43,15 @@ Keep the top level to `README.md`, `AGENTS.md` and `.gitignore` (plus `.github/`
 
 ## Releases
 
-Release with `git tag v1.2.3 && git push origin v1.2.3`. In the repo `VERSION=dev`. Only the release workflow sets a real version. Users install from `releases/latest/download/install.sh` and update with `doubleshot update`.
+Release with `git tag -a v1.2.3 -m v1.2.3 && git push origin v1.2.3`. Only release when the owner asks for it. In the repo `VERSION=dev`. Only the release workflow sets a real version. Users install from `releases/latest/download/install.sh` and update with `doubleshot update`.
 
 ## Testing
 
-CI (`.github/workflows/ci.yml`) runs on every push on a macOS runner. It lints, installs, checks that `caffeinate` toggles `SleepDisabled`, sets the battery limit, updates to the latest release and uninstalls. Quick local check:
+CI (`.github/workflows/ci.yml`) runs on every push on a macOS runner. It lints, installs, checks the zsh completion, checks that `caffeinate` toggles `SleepDisabled`, disables and enables, sets the battery limit, uninstalls, and updates to the latest release. Quick local check:
 
 ```sh
 bash -n src/caffeinate-doubleshot.sh src/install.sh src/doubleshot
+zsh -n src/_doubleshot
 plutil -lint src/at.flosch.caffeinate-doubleshot.plist
 ```
 

@@ -16,13 +16,16 @@ concurrency:
 jobs:
   test:
     runs-on: macos-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
+    env:
+      BASH_ENV: ${{ github.workspace }}/.github/ci-helpers.sh
     steps:
       - uses: actions/checkout@v4
 
       - name: Lint
         run: |
           bash -n src/caffeinate-doubleshot.sh src/install.sh src/doubleshot
+          zsh -n src/_doubleshot
           plutil -lint src/at.flosch.caffeinate-doubleshot.plist
 
       - name: Install
@@ -30,17 +33,15 @@ jobs:
           ./src/install.sh
           ./src/install.sh   # running it again updates in place
           doubleshot
+          [ -f /usr/local/share/zsh/site-functions/_doubleshot ]
+
+      - name: Shell completion
+        run: |
+          # compinit picks up _doubleshot from the default fpath.
+          /bin/zsh -f -c 'autoload -U compinit; compinit -u -D; [[ ${_comps[doubleshot]} == _doubleshot ]]'
 
       - name: caffeinate disables sleep, stopping it restores sleep
         run: |
-          # Waits up to 15 s for SleepDisabled to reach the expected value.
-          expect_sleep_disabled() {
-            for _ in $(seq 15); do
-              pmset -g | grep -E "SleepDisabled[[:space:]]+$1" >/dev/null && return 0
-              sleep 1
-            done
-            echo "SleepDisabled is not $1" >&2; pmset -g; doubleshot log; return 1
-          }
           expect_sleep_disabled 0
           caffeinate -t 120 & pid=$!
           expect_sleep_disabled 1
@@ -49,6 +50,24 @@ jobs:
           expect_sleep_disabled 0
           doubleshot log
 
+      - name: Disable and enable
+        run: |
+          caffeinate -t 300 & pid=$!
+          expect_sleep_disabled 1
+          doubleshot disable
+          expect_sleep_disabled 0
+          doubleshot | grep 'disabled (doubleshot enable)'
+          sleep 6
+          expect_sleep_disabled 0   # stays off while caffeinate runs
+          ./src/install.sh | grep 'It is disabled'   # an update keeps it disabled
+          sleep 6
+          expect_sleep_disabled 0
+          doubleshot enable
+          expect_sleep_disabled 1
+          doubleshot | grep -E 'Daemon: +running'
+          kill "$pid"
+          expect_sleep_disabled 0
+
       - name: Battery limit
         run: |
           [ "$(doubleshot battery)" = 15% ]
@@ -56,23 +75,29 @@ jobs:
           [ "$(doubleshot battery)" = 30% ]
           if doubleshot battery 101; then exit 1; fi
 
-      - name: Update to the latest release
-        # Skipped for release tags: the release being made is not published yet.
-        if: github.ref_type != 'tag'
-        run: |
-          [ "$(doubleshot version)" = dev ]
-          doubleshot update
-          doubleshot version | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'
-          doubleshot update | grep 'Already on the latest version'
-          [ "$(doubleshot battery)" = 30% ]   # update keeps the setting
-
       - name: Uninstall
         run: |
+          doubleshot disable   # uninstall also clears the stored disabled flag
           caffeinate -t 120 &
           sleep 5
           doubleshot uninstall
           pmset -g | grep -E 'SleepDisabled[[:space:]]+0'
           [ ! -e /usr/local/bin/doubleshot ]
+          [ ! -e /usr/local/share/zsh/site-functions/_doubleshot ]
           [ ! -e /Library/LaunchDaemons/at.flosch.caffeinate-doubleshot.plist ]
           [ ! -e /usr/local/bin/caffeinate-doubleshot.sh ]
           [ ! -e /usr/local/etc/caffeinate-doubleshot.conf ]
+          if launchctl print-disabled system | grep -E '"at.flosch.caffeinate-doubleshot" => (disabled|true)'; then exit 1; fi
+
+      - name: Update to the latest release
+        # Skipped for release tags: the release being made is not published yet.
+        if: github.ref_type != 'tag'
+        run: |
+          ./src/install.sh
+          doubleshot battery 30
+          [ "$(doubleshot version)" = dev ]
+          doubleshot update
+          doubleshot version | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'
+          doubleshot update | grep 'Already on the latest version'
+          [ "$(doubleshot battery)" = 30% ]   # update keeps the setting
+          doubleshot uninstall

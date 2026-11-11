@@ -1,0 +1,21 @@
+#compdef doubleshot
+# zsh completion for doubleshot. Installed to /usr/local/share/zsh/site-functions/.
+
+local -a commands
+commands=(
+  'status:Show daemon, caffeinate and sleep state'
+  'enable:Start the daemon, also at every boot'
+  'disable:Stop the daemon and restore normal sleep'
+  'battery:Show or set the battery limit'
+  'log:Show the last 20 log lines'
+  'update:Install the latest release'
+  'version:Show the installed version'
+  'uninstall:Remove Caffeinate Doubleshot'
+  'help:Show usage'
+)
+
+if (( CURRENT == 2 )); then
+  _describe 'command' commands
+elif (( CURRENT == 3 )) && [[ $words[2] == battery ]]; then
+  _message 'battery limit in percent, 0 to 100'
+fi

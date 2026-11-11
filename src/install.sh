@@ -29,7 +29,7 @@ if [ -z "$src" ]; then
   [ "$VERSION" != dev ] || { echo "Install from a release or a clone." >&2; exit 1; }
   src=$(mktemp -d)
   trap 'rm -rf "$src"' EXIT
-  for f in caffeinate-doubleshot.sh doubleshot "$LABEL.plist"; do
+  for f in caffeinate-doubleshot.sh doubleshot _doubleshot "$LABEL.plist"; do
     curl -fsSL "$RELEASE_URL/$f" -o "$src/$f"
   done
 fi
@@ -37,12 +37,19 @@ fi
 mkdir -p /usr/local/bin
 install -m 755 -o root -g wheel "$src/caffeinate-doubleshot.sh" "$src/doubleshot" /usr/local/bin/
 install -m 644 -o root -g wheel "$src/$LABEL.plist" /Library/LaunchDaemons/
+mkdir -p /usr/local/share/zsh/site-functions   # in the default zsh fpath on macOS
+install -m 644 -o root -g wheel "$src/_doubleshot" /usr/local/share/zsh/site-functions/
 launchctl bootout "system/$LABEL" 2>/dev/null || true
 # bootout returns before the old service is gone. Bootstrapping too early fails with error 5.
 for _ in $(seq 20); do
   launchctl print "system/$LABEL" >/dev/null 2>&1 || break
   sleep 0.5
 done
+# An update keeps a daemon the user disabled with `doubleshot disable` stopped.
+if launchctl print-disabled system | grep -E "\"$LABEL\" => (disabled|true)" >/dev/null; then
+  echo "Caffeinate Doubleshot $VERSION installed. It is disabled, run 'doubleshot enable' to turn it on."
+  exit 0
+fi
 launchctl bootstrap system "/Library/LaunchDaemons/$LABEL.plist"
 
 echo "Caffeinate Doubleshot $VERSION installed. Run 'doubleshot' to see its status."
