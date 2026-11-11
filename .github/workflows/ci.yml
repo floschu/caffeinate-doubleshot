@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: ['**']   # tags run this through release.yml
+  pull_request:
+  workflow_dispatch:
+  workflow_call:
+
+# A new push cancels the running build for the same branch or PR.
+# Release tags (via release.yml) are never cancelled.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+jobs:
+  test:
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Lint
+        run: |
+          bash -n src/caffeinate-doubleshot.sh src/install.sh src/doubleshot
+          plutil -lint src/at.flosch.caffeinate-doubleshot.plist
+
+      - name: Install
+        run: |
+          ./src/install.sh
+          ./src/install.sh   # running it again updates in place
+          doubleshot
+
+      - name: caffeinate disables sleep, stopping it restores sleep
+        run: |
+          # Waits up to 15 s for SleepDisabled to reach the expected value.
+          expect_sleep_disabled() {
+            for _ in $(seq 15); do
+              pmset -g | grep -E "SleepDisabled[[:space:]]+$1" >/dev/null && return 0
+              sleep 1
+            done
+            echo "SleepDisabled is not $1" >&2; pmset -g; doubleshot log; return 1
+          }
+          expect_sleep_disabled 0
+          caffeinate -t 120 & pid=$!
+          expect_sleep_disabled 1
+          doubleshot
+          kill "$pid"
+          expect_sleep_disabled 0
+          doubleshot log
+
+      - name: Battery limit
+        run: |
+          [ "$(doubleshot battery)" = 15% ]
+          doubleshot battery 30
+          [ "$(doubleshot battery)" = 30% ]
+          if doubleshot battery 101; then exit 1; fi
+
+      - name: Update to the latest release
+        # Skipped for release tags: the release being made is not published yet.
+        if: github.ref_type != 'tag'
+        run: |
+          [ "$(doubleshot version)" = dev ]
+          doubleshot update
+          doubleshot version | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'
+          doubleshot update | grep 'Already on the latest version'
+          [ "$(doubleshot battery)" = 30% ]   # update keeps the setting
+
+      - name: Uninstall
+        run: |
+          caffeinate -t 120 &
+          sleep 5
+          doubleshot uninstall
+          pmset -g | grep -E 'SleepDisabled[[:space:]]+0'
+          [ ! -e /usr/local/bin/doubleshot ]
+          [ ! -e /Library/LaunchDaemons/at.flosch.caffeinate-doubleshot.plist ]
+          [ ! -e /usr/local/bin/caffeinate-doubleshot.sh ]
+          [ ! -e /usr/local/etc/caffeinate-doubleshot.conf ]
