@@ -49,7 +49,7 @@ Release with `git tag -a v1.2.3 -m v1.2.3 && git push origin v1.2.3`. Only relea
 
 ## Testing
 
-CI (`.github/workflows/ci.yml`) runs on every push on a macOS runner. It lints, installs, checks the zsh completion, checks that `caffeinate` toggles `SleepDisabled`, disables and enables, sets the battery limit, uninstalls, and updates to the latest release. Quick local check:
+CI (`.github/workflows/ci.yml`) runs on a macOS runner for pushes to `develop`, for pull requests and for release tags. It lints, installs, checks the zsh completion, checks that `caffeinate` toggles `SleepDisabled`, disables and enables, sets the battery limit, uninstalls, and updates to the latest release. Quick local check:
 
 ```sh
 bash -n src/caffeinate-doubleshot.sh src/install.sh src/doubleshot
