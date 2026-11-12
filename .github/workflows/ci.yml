@@ -101,8 +101,13 @@ jobs:
           ./src/install.sh
           doubleshot battery 30
           [ "$(doubleshot version)" = dev ]
+          if doubleshot update 1.2; then exit 1; fi     # not a version
+          if doubleshot update 9.9.9; then exit 1; fi   # no such release
+          doubleshot update v1.0.0                      # a given, older release
+          [ "$(doubleshot version)" = 1.0.0 ]
+          ./src/install.sh
           doubleshot update
           doubleshot version | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'
-          doubleshot update | grep 'Already on the latest version'
+          doubleshot update | grep 'Already on'
           [ "$(doubleshot battery)" = 30% ]   # update keeps the setting
           doubleshot uninstall

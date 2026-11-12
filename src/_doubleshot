@@ -8,7 +8,7 @@ commands=(
   'disable:Stop the daemon and restore normal sleep'
   'battery:Show or set the battery limit'
   'log:Show the last 20 log lines'
-  'update:Install the latest release'
+  'update:Install the latest or a given release'
   'version:Show the installed version'
   'uninstall:Remove Caffeinate Doubleshot'
   'help:Show usage'
@@ -18,4 +18,6 @@ if (( CURRENT == 2 )); then
   _describe 'command' commands
 elif (( CURRENT == 3 )) && [[ $words[2] == battery ]]; then
   _message 'battery limit in percent, 0 to 100'
+elif (( CURRENT == 3 )) && [[ $words[2] == update ]]; then
+  _message 'release version like 1.1.0, latest when left out'
 fi
