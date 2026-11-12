@@ -29,7 +29,7 @@ Keep the top level to `README.md`, `AGENTS.md` and `.gitignore` (plus `.github/`
 ## Behaviour that must not break
 
 - Any `caffeinate` process triggers it, regardless of what started it (Raycast, Terminal, other apps). Do not filter by parent process.
-- When `caffeinate` ends while the lid is closed, the Mac must sleep immediately (`pmset sleepnow`). Only after the daemon held it awake: a daemon start with the lid closed (boot in clamshell mode, `doubleshot enable` over SSH) must not sleep.
+- When `caffeinate` ends while the lid is closed, the Mac must sleep immediately (`pmset sleepnow`). Only when sleep was disabled before: a daemon start with the lid closed (boot in clamshell mode, `doubleshot enable` over SSH) must not sleep. The daemon starts from the current `SleepDisabled` value, so a leftover 1 from a killed daemon still leads to sleep.
 - The daemon script lives in a root-only directory. On Intel Macs with Homebrew, `/usr/local/bin` belongs to the user, and launchd runs the script at the plist path as root.
 - On battery below `MIN_BATTERY` (default 15%, set with `doubleshot battery`), sleep is allowed again even while `caffeinate` runs. The daemon parses the config file and never sources it, because it runs as root.
 - Every exit path (daemon stop, `doubleshot disable`, uninstall) must leave `disablesleep` at 0. A stuck `disablesleep 1` keeps a closed laptop running and heating up.
