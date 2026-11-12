@@ -100,6 +100,8 @@ case "${1:-status}" in
     as_root "$@"
     echo "Updating $VERSION to $target."
     curl -fsSL "$REPO_URL/releases/download/v$target/install.sh" | bash
+    # Releases up to 1.2.0 keep the daemon in /usr/local/bin and don't know these files.
+    grep -q "$DAEMON" "$PLIST" || rm -f "$DAEMON" /etc/newsyslog.d/caffeinate-doubleshot.conf
     ;;
   version|--version)
     echo "$VERSION"

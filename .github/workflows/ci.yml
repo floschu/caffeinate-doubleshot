@@ -105,7 +105,11 @@ jobs:
           if doubleshot update 9.9.9; then exit 1; fi   # no such release
           doubleshot update v1.0.0                      # a given, older release
           [ "$(doubleshot version)" = 1.0.0 ]
+          [ ! -e /Library/PrivilegedHelperTools/caffeinate-doubleshot.sh ]   # old layout, new files removed
+          [ ! -e /etc/newsyslog.d/caffeinate-doubleshot.conf ]
           ./src/install.sh
+          [ -f /Library/PrivilegedHelperTools/caffeinate-doubleshot.sh ]
+          [ ! -e /usr/local/bin/caffeinate-doubleshot.sh ]                   # upgrade removes the old daemon
           doubleshot update
           doubleshot version | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'
           doubleshot update | grep 'Already on'
