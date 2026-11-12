@@ -9,7 +9,7 @@ Caffeinate Doubleshot keeps a MacBook awake with the lid closed while any `caffe
 | File | Purpose |
 |---|---|
 | `src/caffeinate-doubleshot.sh` | The daemon. Polls every 3 seconds and toggles `pmset -a disablesleep`. Installed to `/usr/local/bin/`. |
-| `src/doubleshot` | User command: `status`, `enable`, `disable`, `battery [0-100]`, `log`, `update`, `version`, `uninstall`. Installed to `/usr/local/bin/`. |
+| `src/doubleshot` | User command: `status`, `enable`, `disable`, `battery [0-100]`, `log`, `update [version]`, `version`, `uninstall`. Installed to `/usr/local/bin/`. |
 | `src/_doubleshot` | zsh completion for `doubleshot`. Installed to `/usr/local/share/zsh/site-functions/`, which is in the default fpath of macOS `/bin/zsh`. Keep its command list in step with `doubleshot`. |
 | `src/at.flosch.caffeinate-doubleshot.plist` | LaunchDaemon definition (`RunAtLoad`, `KeepAlive`, logs to `/var/log/caffeinate-doubleshot.log`). Installed to `/Library/LaunchDaemons/`. |
 | `src/install.sh` | Installs or updates. Works from a clone or piped from curl (`curl ... \| sudo bash`), in which case it downloads the other files from the release it came from. |
@@ -43,7 +43,7 @@ Keep the top level to `README.md`, `AGENTS.md` and `.gitignore` (plus `.github/`
 
 ## Releases
 
-Release with `git tag -a v1.2.3 -m v1.2.3 && git push origin v1.2.3`. Only release when the owner asks for it. In the repo `VERSION=dev`. Only the release workflow sets a real version. Users install from `releases/latest/download/install.sh` and update with `doubleshot update`.
+Release with `git tag -a v1.2.3 -m v1.2.3 && git push origin v1.2.3`. Only release when the owner asks for it. In the repo `VERSION=dev`. Only the release workflow sets a real version. Users install from `releases/latest/download/install.sh` and update with `doubleshot update`. `doubleshot update 1.2.3` installs a given release, also an older one, which is the way back for testing.
 
 ## Testing
 

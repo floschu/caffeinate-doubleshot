@@ -25,6 +25,8 @@ doubleshot enable       # turns it back on
 doubleshot battery 25   # on battery below 25%, allow sleep again (default 15, 0 = off)
 doubleshot log          # shows the last 20 log lines
 doubleshot update       # installs the latest release
+doubleshot update 1.1.0 # installs the given release, also an older one
+doubleshot version      # shows the installed version
 doubleshot uninstall    # removes everything and restores normal sleep
 ```
 

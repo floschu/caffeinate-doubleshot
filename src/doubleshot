@@ -19,6 +19,7 @@ Usage: doubleshot [command]
   battery <0-100>   On battery below this %, allow sleep again (0 = never)
   log               Show the last 20 log lines
   update            Install the latest release
+  update <version>  Install the given release, also an older one, like 1.1.0
   version           Show the installed version
   uninstall         Remove Caffeinate Doubleshot and restore normal sleep
 EOF
@@ -79,14 +80,23 @@ case "${1:-status}" in
     tail -n 20 "$LOG"
     ;;
   update)
-    # releases/latest redirects to releases/tag/v<version>.
-    latest=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$REPO_URL/releases/latest" 2>/dev/null || true)
-    latest=${latest##*/v}
-    [[ "$latest" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Could not find the latest release." >&2; exit 1; }
-    if [ "$latest" = "$VERSION" ]; then echo "Already on the latest version ($VERSION)."; exit 0; fi
+    if [ $# -ge 2 ]; then
+      target=${2#v}
+      [[ "$target" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Version must look like 1.2.3." >&2; exit 1; }
+      # A release asset answers with a redirect, a missing one with 404.
+      curl -fsSI -o /dev/null "$REPO_URL/releases/download/v$target/install.sh" 2>/dev/null \
+        || { echo "Release $target not found. See $REPO_URL/releases" >&2; exit 1; }
+      if [ "$target" = "$VERSION" ]; then echo "Already on version $VERSION."; exit 0; fi
+    else
+      # releases/latest redirects to releases/tag/v<version>.
+      target=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$REPO_URL/releases/latest" 2>/dev/null || true)
+      target=${target##*/v}
+      [[ "$target" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Could not find the latest release." >&2; exit 1; }
+      if [ "$target" = "$VERSION" ]; then echo "Already on the latest version ($VERSION)."; exit 0; fi
+    fi
     as_root "$@"
-    echo "Updating $VERSION to $latest."
-    curl -fsSL "$REPO_URL/releases/download/v$latest/install.sh" | bash
+    echo "Updating $VERSION to $target."
+    curl -fsSL "$REPO_URL/releases/download/v$target/install.sh" | bash
     ;;
   version|--version)
     echo "$VERSION"
