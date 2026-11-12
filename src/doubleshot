@@ -5,6 +5,8 @@ set -euo pipefail
 VERSION=dev   # set by the release workflow
 REPO_URL=https://github.com/floschu/caffeinate-doubleshot
 LABEL=at.flosch.caffeinate-doubleshot
+PLIST=/Library/LaunchDaemons/$LABEL.plist
+DAEMON=/Library/PrivilegedHelperTools/caffeinate-doubleshot.sh
 CONF=/usr/local/etc/caffeinate-doubleshot.conf
 LOG=/var/log/caffeinate-doubleshot.log
 
@@ -41,13 +43,14 @@ case "${1:-status}" in
   status)
     daemon=stopped
     if disabled; then daemon="disabled (doubleshot enable)"
-    elif pgrep -f /usr/local/bin/caffeinate-doubleshot.sh >/dev/null; then daemon=running; fi
+    elif pgrep -f "$DAEMON" >/dev/null; then daemon=running; fi
     caff="not running"; pgrep -x caffeinate >/dev/null && caff=running
     sleep_state=normal
     pmset -g | grep -E 'SleepDisabled[[:space:]]+1' >/dev/null && sleep_state="disabled (lid can be closed)"
     printf '%-14s %s\n' Version: "$VERSION" Daemon: "$daemon" caffeinate: "$caff" Sleep: "$sleep_state" "Battery limit:" "$(min_battery)%"
     ;;
   enable)
+    [ -f "$PLIST" ] || { echo "Caffeinate Doubleshot is not installed." >&2; exit 1; }
     as_root "$@"
     launchctl enable "system/$LABEL"
     # Restart it, waiting for the old one to unload, or bootstrap fails with error 5.
@@ -56,7 +59,7 @@ case "${1:-status}" in
       launchctl print "system/$LABEL" >/dev/null 2>&1 || break
       sleep 0.5
     done
-    launchctl bootstrap system "/Library/LaunchDaemons/$LABEL.plist"
+    launchctl bootstrap system "$PLIST"
     echo "Caffeinate Doubleshot enabled."
     ;;
   disable)
@@ -95,8 +98,9 @@ case "${1:-status}" in
     as_root "$@"
     launchctl bootout "system/$LABEL" 2>/dev/null || true
     launchctl enable "system/$LABEL"   # drop a stored "disabled" flag
-    rm -f "/Library/LaunchDaemons/$LABEL.plist" /usr/local/bin/caffeinate-doubleshot.sh \
-      /usr/local/bin/doubleshot /usr/local/share/zsh/site-functions/_doubleshot "$CONF" "$LOG"
+    rm -f "$PLIST" "$DAEMON" /usr/local/bin/caffeinate-doubleshot.sh /usr/local/bin/doubleshot \
+      /usr/local/share/zsh/site-functions/_doubleshot /etc/newsyslog.d/caffeinate-doubleshot.conf \
+      "$CONF" "$LOG" "$LOG".[0-9]*
     pmset -a disablesleep 0
     echo "Caffeinate Doubleshot uninstalled. Normal sleep restored."
     ;;

@@ -30,12 +30,15 @@ battery_low() {
 }
 
 set_state() {
+  local prev=$state
   pmset -a disablesleep "$1"
   state="$1"
   log "disablesleep=$1"
   # If caffeinate ended while the lid is shut, sleep now instead of
-  # staying awake until the next lid event.
-  if [ "$1" = 0 ] && lid_closed; then
+  # staying awake until the next lid event. Only after this daemon held
+  # the Mac awake: a start with the lid closed (boot in clamshell mode,
+  # `doubleshot enable` over SSH) must not put it to sleep.
+  if [ "$1" = 0 ] && [ "$prev" = 1 ] && lid_closed; then
     log "lid closed, sleeping now"
     pmset sleepnow
   fi

@@ -8,6 +8,9 @@ set -euo pipefail
 VERSION=dev   # set by the release workflow
 RELEASE_URL="https://github.com/floschu/caffeinate-doubleshot/releases/download/v$VERSION"
 LABEL=at.flosch.caffeinate-doubleshot
+# Only root can write here. /usr/local/bin belongs to the user on Intel Macs with
+# Homebrew, and launchd runs whatever sits at the daemon path as root.
+DAEMON_DIR=/Library/PrivilegedHelperTools
 SELF="${BASH_SOURCE[0]:-}"
 
 [ "$(uname)" = Darwin ] || { echo "Caffeinate Doubleshot only works on macOS." >&2; exit 1; }
@@ -34,22 +37,21 @@ if [ -z "$src" ]; then
   done
 fi
 
-mkdir -p /usr/local/bin
-install -m 755 -o root -g wheel "$src/caffeinate-doubleshot.sh" "$src/doubleshot" /usr/local/bin/
+mkdir -p "$DAEMON_DIR" /usr/local/bin
+install -m 755 -o root -g wheel "$src/caffeinate-doubleshot.sh" "$DAEMON_DIR/"
+install -m 755 -o root -g wheel "$src/doubleshot" /usr/local/bin/
+rm -f /usr/local/bin/caffeinate-doubleshot.sh   # where versions up to 1.1.0 kept the daemon
 install -m 644 -o root -g wheel "$src/$LABEL.plist" /Library/LaunchDaemons/
 mkdir -p /usr/local/share/zsh/site-functions   # in the default zsh fpath on macOS
 install -m 644 -o root -g wheel "$src/_doubleshot" /usr/local/share/zsh/site-functions/
-launchctl bootout "system/$LABEL" 2>/dev/null || true
-# bootout returns before the old service is gone. Bootstrapping too early fails with error 5.
-for _ in $(seq 20); do
-  launchctl print "system/$LABEL" >/dev/null 2>&1 || break
-  sleep 0.5
-done
+# newsyslog rotates the log at 100 KB and keeps 3 compressed archives.
+printf '/var/log/caffeinate-doubleshot.log\t644\t3\t100\t*\tJ\n' >/etc/newsyslog.d/caffeinate-doubleshot.conf
+
 # An update keeps a daemon the user disabled with `doubleshot disable` stopped.
 if launchctl print-disabled system | grep -E "\"$LABEL\" => (disabled|true)" >/dev/null; then
+  launchctl bootout "system/$LABEL" 2>/dev/null || true
   echo "Caffeinate Doubleshot $VERSION installed. It is disabled, run 'doubleshot enable' to turn it on."
   exit 0
 fi
-launchctl bootstrap system "/Library/LaunchDaemons/$LABEL.plist"
-
+/usr/local/bin/doubleshot enable >/dev/null   # restarts a running daemon
 echo "Caffeinate Doubleshot $VERSION installed. Run 'doubleshot' to see its status."

@@ -33,7 +33,9 @@ jobs:
           ./src/install.sh
           ./src/install.sh   # running it again updates in place
           doubleshot
+          [ -f /Library/PrivilegedHelperTools/caffeinate-doubleshot.sh ]
           [ -f /usr/local/share/zsh/site-functions/_doubleshot ]
+          [ -f /etc/newsyslog.d/caffeinate-doubleshot.conf ]
 
       - name: Shell completion
         run: |
@@ -85,8 +87,11 @@ jobs:
           [ ! -e /usr/local/bin/doubleshot ]
           [ ! -e /usr/local/share/zsh/site-functions/_doubleshot ]
           [ ! -e /Library/LaunchDaemons/at.flosch.caffeinate-doubleshot.plist ]
+          [ ! -e /Library/PrivilegedHelperTools/caffeinate-doubleshot.sh ]
           [ ! -e /usr/local/bin/caffeinate-doubleshot.sh ]
+          [ ! -e /etc/newsyslog.d/caffeinate-doubleshot.conf ]
           [ ! -e /usr/local/etc/caffeinate-doubleshot.conf ]
+          ./src/doubleshot enable 2>&1 | grep 'is not installed'   # a clear error, no sudo
           if launchctl print-disabled system | grep -E '"at.flosch.caffeinate-doubleshot" => (disabled|true)'; then exit 1; fi
 
       - name: Update to the latest release
