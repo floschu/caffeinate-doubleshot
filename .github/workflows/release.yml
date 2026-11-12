@@ -22,7 +22,7 @@ jobs:
         run: |
           v=${GITHUB_REF_NAME#v}
           sed -i "s/^VERSION=dev /VERSION=$v /" src/install.sh src/doubleshot
-          grep "^VERSION=$v " src/install.sh src/doubleshot
+          for f in src/install.sh src/doubleshot; do grep "^VERSION=$v " "$f"; done
 
       - name: Create release
         env:

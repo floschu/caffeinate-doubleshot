@@ -6,7 +6,7 @@
   <string>at.flosch.caffeinate-doubleshot</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/usr/local/bin/caffeinate-doubleshot.sh</string>
+    <string>/Library/PrivilegedHelperTools/caffeinate-doubleshot.sh</string>
   </array>
   <key>RunAtLoad</key>
   <true/>

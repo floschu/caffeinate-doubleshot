@@ -4,7 +4,9 @@
 
 INTERVAL=3
 CONF=/usr/local/etc/caffeinate-doubleshot.conf   # written by `doubleshot battery`
-state=""
+# Start from the current flag. A leftover 1 (a killed daemon, a crash) then counts
+# as held awake, so set_state puts a Mac with a closed lid to sleep.
+state=0; pmset -g | grep -qE 'SleepDisabled[[:space:]]+1' && state=1
 
 log() { echo "$(date "+%Y-%m-%d %H:%M:%S") $*"; }   # launchd writes stdout to /var/log/caffeinate-doubleshot.log
 
@@ -30,12 +32,15 @@ battery_low() {
 }
 
 set_state() {
+  local prev=$state
   pmset -a disablesleep "$1"
   state="$1"
   log "disablesleep=$1"
   # If caffeinate ended while the lid is shut, sleep now instead of
-  # staying awake until the next lid event.
-  if [ "$1" = 0 ] && lid_closed; then
+  # staying awake until the next lid event. Only when sleep was disabled
+  # before: a start with the lid closed (boot in clamshell mode,
+  # `doubleshot enable` over SSH) must not put it to sleep.
+  if [ "$1" = 0 ] && [ "$prev" = 1 ] && lid_closed; then
     log "lid closed, sleeping now"
     pmset sleepnow
   fi
@@ -44,7 +49,7 @@ set_state() {
 cleanup() { pmset -a disablesleep 0; log "stopped, disablesleep=0"; exit 0; }
 trap cleanup TERM INT HUP
 
-log "started"
+log "started, disablesleep=$state"
 while true; do
   MIN_BATTERY=$(min_battery)
   want=0

@@ -1,8 +1,10 @@
 name: CI
 
+# Pushes to other branches run through pull_request only, so a PR builds once.
+# Tags run this through release.yml. Run any branch by hand with workflow_dispatch.
 on:
   push:
-    branches: ['**']   # tags run this through release.yml
+    branches: [develop]
   pull_request:
   workflow_dispatch:
   workflow_call:
@@ -33,7 +35,9 @@ jobs:
           ./src/install.sh
           ./src/install.sh   # running it again updates in place
           doubleshot
+          [ -f /Library/PrivilegedHelperTools/caffeinate-doubleshot.sh ]
           [ -f /usr/local/share/zsh/site-functions/_doubleshot ]
+          [ -f /etc/newsyslog.d/caffeinate-doubleshot.conf ]
 
       - name: Shell completion
         run: |
@@ -85,8 +89,11 @@ jobs:
           [ ! -e /usr/local/bin/doubleshot ]
           [ ! -e /usr/local/share/zsh/site-functions/_doubleshot ]
           [ ! -e /Library/LaunchDaemons/at.flosch.caffeinate-doubleshot.plist ]
+          [ ! -e /Library/PrivilegedHelperTools/caffeinate-doubleshot.sh ]
           [ ! -e /usr/local/bin/caffeinate-doubleshot.sh ]
+          [ ! -e /etc/newsyslog.d/caffeinate-doubleshot.conf ]
           [ ! -e /usr/local/etc/caffeinate-doubleshot.conf ]
+          ./src/doubleshot enable 2>&1 | grep 'is not installed'   # a clear error, no sudo
           if launchctl print-disabled system | grep -E '"at.flosch.caffeinate-doubleshot" => (disabled|true)'; then exit 1; fi
 
       - name: Update to the latest release
@@ -100,7 +107,11 @@ jobs:
           if doubleshot update 9.9.9; then exit 1; fi   # no such release
           doubleshot update v1.0.0                      # a given, older release
           [ "$(doubleshot version)" = 1.0.0 ]
+          [ ! -e /Library/PrivilegedHelperTools/caffeinate-doubleshot.sh ]   # old layout, new files removed
+          [ ! -e /etc/newsyslog.d/caffeinate-doubleshot.conf ]
           ./src/install.sh
+          [ -f /Library/PrivilegedHelperTools/caffeinate-doubleshot.sh ]
+          [ ! -e /usr/local/bin/caffeinate-doubleshot.sh ]                   # upgrade removes the old daemon
           doubleshot update
           doubleshot version | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$'
           doubleshot update | grep 'Already on'
